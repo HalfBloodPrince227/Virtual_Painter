@@ -9,8 +9,8 @@ ERASE_THICKNESS = 100
 DRAW = False
 DRAW_COLOR = (0,0,0)
 FOLDER_HEADERS = 'Header'
-
-imgCanvas = np.zeros((1080, 1920), np.uint8)
+ERASE = False
+imgCanvas = np.zeros((1080, 1920, 3), np.uint8)
 
 myList = os.listdir(FOLDER_HEADERS)
 for imgPath in myList:
@@ -21,6 +21,7 @@ header = HEADER_LIST[-1]
 WIDTH = 1920
 HEIGHT = 1080
 
+xp, yp = 0, 0
 cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, WIDTH)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, HEIGHT)
@@ -47,23 +48,58 @@ while cap.isOpened():  # пока камера "работает"
 
 
                 distance = detector.findDistance(4, 8, i)
-                if distance < 45:
+                if distance < 50:
                     if cy < h:
                         if 244 <= cx <= 480:
                             header = HEADER_LIST[0]
                             DRAW_COLOR = (0, 0, 255)  # красный
+                            DRAW = True
+                            ERASE = False
                         elif 705 <= cx <= 1000:
                             header = HEADER_LIST[1]
                             DRAW_COLOR = (255, 0, 0)  # синий
+                            DRAW = True
+                            ERASE = False
                         elif 1120 <= cx <= 1420:
                             header = HEADER_LIST[2]
+                            DRAW_COLOR = (0, 255, 255)  # жёлтый
+                            DRAW = True
+                            ERASE = False
                         elif 1630 <= cx <= 1800:
                             header = HEADER_LIST[3]
+                            DRAW = False
+                            ERASE = True
+                            DRAW_COLOR = (0, 0, 0)
+                        elif cx < 219:
+                            header = HEADER_LIST[4]
+                            DRAW_COLOR = (0, 0, 0) 
+                            DRAW = False
+                            ERASE = False
 
 
+
+                cv2.circle(image, (cx, cy), 15, DRAW_COLOR, cv2.FILLED)
+
+                if DRAW and distance < 50:
+                    if xp == 0 and yp == 0:
+                        xp, yp = cx, cy
+                    cv2.line(image, (xp, yp), (cx, cy), DRAW_COLOR, BRUSH_THICKNESS)
+                    cv2.line(imgCanvas, (xp, yp), (cx, cy), DRAW_COLOR, BRUSH_THICKNESS)
+                if ERASE and distance < 50:
+                    if xp == 0 and yp == 0:
+                        xp, yp = cx, cy
+                    cv2.line(image, (xp, yp), (cx, cy), DRAW_COLOR, ERASE_THICKNESS)
+                    cv2.line(imgCanvas, (xp, yp), (cx, cy), DRAW_COLOR, ERASE_THICKNESS)
+                xp, yp = cx, cy
+
+    imgGray = cv2.cvtColor(imgCanvas, cv2.COLOR_BGR2GRAY)
+    _, imgInv = cv2.threshold(imgGray, 10, 255, cv2.THRESH_BINARY_INV)
+    imgInv = cv2.cvtColor(imgInv, cv2.COLOR_GRAY2BGR)
+    image = cv2.bitwise_and(image, imgInv)
+    image = cv2.bitwise_or(image, imgCanvas)
 
     image[0:h, 0:w] = header
     cv2.imshow('window', image)
 
     if cv2.waitKey(1) & 0xFF == 27:  # Ожидаем нажатие ESC 
-        break 
+        break
